@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Globe Trotter — My Travel Tips</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="container">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="#">
+        🌍 Globe Trotter
+      </a>
+    </div>
+    <div class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="#upload-section">Upload</a>
+        <a class="navbar-item" href="#locations-section">My Places</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== Globe Section ===== -->
+<section id="globe-section">
+  <div id="globe-container">
+    <div id="globe-tooltip"></div>
+    <div class="globe-overlay">
+      <div class="globe-title">Your World,<br>Your Stories.</div>
+      <div class="globe-subtitle">Drag to rotate &middot; Scroll to zoom &middot; Click a pin to read tips</div>
+    </div>
+    <div class="globe-hint">🖱 Drag &amp; Scroll</div>
+  </div>
+</section>
+
+<!-- ===== Stats Bar ===== -->
+<div class="stats-bar" id="stats-bar">
+  <div class="container">
+    <div class="columns is-mobile is-centered">
+      <div class="column is-narrow">
+        <div class="stat-item">
+          <div class="stat-number" id="stat-places">0</div>
+          <div class="stat-label">Places</div>
+        </div>
+      </div>
+      <div class="column is-narrow">
+        <div class="stat-item">
+          <div class="stat-number" id="stat-pinned">0</div>
+          <div class="stat-label">On Globe</div>
+        </div>
+      </div>
+      <div class="column is-narrow">
+        <div class="stat-item">
+          <div class="stat-number" id="stat-lists">0</div>
+          <div class="stat-label">Lists</div>
+        </div>
+      </div>
+      <div class="column is-narrow">
+        <div class="stat-item">
+          <div class="stat-number" id="stat-notes">0</div>
+          <div class="stat-label">With Notes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Upload Section ===== -->
+<section id="upload-section">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8-desktop is-10-tablet">
+        <h2 class="section-title">Import from Google Maps</h2>
+        <p class="section-subtitle">
+          Export your saved lists from <strong>Google Takeout</strong> (Maps &rarr; Saved Places) as CSV or JSON, then upload here.
+        </p>
+
+        <div class="upload-box" id="upload-box">
+          <input type="file" id="file-input" accept=".csv,.json" style="display:none" />
+          <div class="icon is-large">📂</div>
+          <p><strong>Drop your Google Maps export here</strong></p>
+          <p>or <strong>click to browse</strong> &nbsp;&mdash;&nbsp; .csv or .json</p>
+          <p style="margin-top:0.75rem;">
+            <span style="font-size:0.72rem; color:#64748b;">
+              Supports: Google Takeout Saved Places (JSON), Maps List CSV exports
+            </span>
+          </p>
+        </div>
+
+        <div class="upload-progress" id="upload-progress">
+          <progress class="progress is-info is-small" max="100">Uploading…</progress>
+          <p style="text-align:center; color:var(--text-muted); font-size:0.82rem; margin-top:0.4rem;">Parsing your locations…</p>
+        </div>
+
+        <div style="margin-top:1rem; display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="button is-small is-danger is-outlined" id="clear-btn" style="display:none">
+            🗑 Clear All Locations
+          </button>
+        </div>
+
+        <!-- Format help accordion -->
+        <details style="margin-top:1.5rem;">
+          <summary style="cursor:pointer; color:var(--teal); font-size:0.85rem; user-select:none;">
+            How to export from Google Maps / Google Takeout ▸
+          </summary>
+          <div style="margin-top:0.75rem; background:rgba(14,165,233,0.04); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; font-size:0.84rem; color:#94a3b8; line-height:1.8;">
+            <ol style="margin-left:1.2rem;">
+              <li>Go to <strong>takeout.google.com</strong> and sign in.</li>
+              <li>Click <em>Deselect all</em>, then scroll to <strong>Maps (your places)</strong> and check it.</li>
+              <li>Choose <strong>Export once</strong> &rarr; any file format &rarr; <strong>Create export</strong>.</li>
+              <li>Download the archive and find <code>Saved Places.json</code> inside the <code>Maps</code> folder.</li>
+              <li>Upload that file here — your notes and locations will appear on the globe.</li>
+            </ol>
+            <p style="margin-top:0.5rem;">
+              <strong>CSV tip:</strong> If you're exporting a specific list, the CSV should have at minimum
+              <code>Title</code>, <code>Note</code>, <code>URL</code>, and optionally <code>Latitude</code>/<code>Longitude</code> columns.
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Locations Section ===== -->
+<section id="locations-section">
+  <div class="container">
+    <h2 class="section-title">My Places</h2>
+    <p class="section-subtitle" id="locations-count-label">No locations yet — upload your Google Maps export above.</p>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" id="filter-bar" style="display:none">
+      <input class="input" type="search" id="search-input" placeholder="🔍  Search places, notes…" style="max-width:280px; flex:1;" />
+      <div class="select">
+        <select id="list-filter">
+          <option value="">All lists</option>
+        </select>
+      </div>
+      <div class="select">
+        <select id="pin-filter">
+          <option value="">All locations</option>
+          <option value="pinned">On globe (has coords)</option>
+          <option value="unpinned">No coordinates</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="locations-grid" id="locations-grid">
+      <!-- Cards injected by JS -->
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🗺️</div>
+      <p style="font-size:1rem; color:#64748b;">Your saved places will appear here after you upload your Google Maps export.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Location Detail Modal ===== -->
+<div class="modal" id="location-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title" id="modal-title">Location</p>
+      <button class="delete" aria-label="close" id="modal-close"></button>
+    </header>
+    <section class="modal-card-body">
+      <div id="modal-list-tag" style="margin-bottom:0.75rem;"></div>
+      <div id="modal-note" class="modal-note" style="display:none"></div>
+      <p id="modal-no-note" style="color:var(--text-muted); font-style:italic; font-size:0.88rem; display:none">No notes for this location.</p>
+      <div id="modal-coords" class="modal-coords" style="margin-top:1rem; display:none"></div>
+      <div id="modal-link-wrap" style="margin-top:0.75rem; display:none">
+        <a id="modal-link" href="#" target="_blank" rel="noopener noreferrer" class="card-link">Open in Google Maps ↗</a>
+      </div>
+    </section>
+    <footer class="modal-card-foot" style="justify-content:flex-end;">
+      <button class="button is-small" id="modal-close-btn">Close</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div id="toast" class="notification"></div>
+
+<!-- ===== Footer ===== -->
+<footer>
+  <p>Globe Trotter &mdash; Your personal travel tips, mapped. &nbsp;|&nbsp; Powered by Three.js &amp; Flask</p>
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"></script>
+<script src="{{ url_for('static', filename='js/globe.js') }}"></script>
+<script>
+(function () {
+  "use strict";
+
+  let allLocations = [];
+  let filteredLocations = [];
+
+  // ---- Data loading ----
+
+  function loadLocations() {
+    fetch("/api/locations")
+      .then(r => r.json())
+      .then(data => {
+        allLocations = data;
+        updateStats();
+        renderCards(allLocations);
+        if (window.updateGlobePins) window.updateGlobePins(allLocations);
+        populateListFilter();
+        document.getElementById("clear-btn").style.display = allLocations.length ? "inline-flex" : "none";
+      })
+      .catch(() => showToast("Failed to load locations.", "is-danger"));
+  }
+
+  function updateStats() {
+    const pinned = allLocations.filter(l => l.lat != null && l.lng != null).length;
+    const withNotes = allLocations.filter(l => l.note && l.note.trim()).length;
+    const lists = new Set(allLocations.map(l => l.list_name).filter(Boolean)).size;
+
+    document.getElementById("stat-places").textContent = allLocations.length;
+    document.getElementById("stat-pinned").textContent = pinned;
+    document.getElementById("stat-lists").textContent = lists;
+    document.getElementById("stat-notes").textContent = withNotes;
+  }
+
+  function populateListFilter() {
+    const sel = document.getElementById("list-filter");
+    const existing = Array.from(sel.options).map(o => o.value);
+    const lists = [...new Set(allLocations.map(l => l.list_name).filter(Boolean))].sort();
+    lists.forEach(name => {
+      if (!existing.includes(name)) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      }
+    });
+  }
+
+  // ---- Rendering ----
+
+  function renderCards(locations) {
+    filteredLocations = locations;
+    const grid = document.getElementById("locations-grid");
+    const empty = document.getElementById("empty-state");
+    const label = document.getElementById("locations-count-label");
+    const filterBar = document.getElementById("filter-bar");
+
+    grid.innerHTML = "";
+
+    if (allLocations.length === 0) {
+      filterBar.style.display = "none";
+      empty.style.display = "block";
+      label.textContent = "No locations yet — upload your Google Maps export above.";
+      return;
+    }
+
+    filterBar.style.display = "flex";
+    label.textContent = locations.length === allLocations.length
+      ? `${allLocations.length} place${allLocations.length !== 1 ? "s" : ""} saved`
+      : `Showing ${locations.length} of ${allLocations.length} places`;
+
+    if (locations.length === 0) {
+      empty.style.display = "block";
+      empty.querySelector("p").textContent = "No locations match your filters.";
+    } else {
+      empty.style.display = "none";
+    }
+
+    locations.forEach(loc => {
+      const card = document.createElement("div");
+      card.className = "location-card" + (loc.lat != null ? " has-pin" : "");
+      card.dataset.id = loc.id;
+
+      const listTag = loc.list_name
+        ? `<span class="tag is-teal">${escHtml(loc.list_name)}</span>`
+        : "";
+      const coordTag = loc.lat != null
+        ? `<span class="tag is-orange">📍 mapped</span>`
+        : `<span class="tag" style="background:rgba(100,116,139,0.15);color:#64748b;border:1px solid rgba(100,116,139,0.2);">no coords</span>`;
+
+      card.innerHTML = `
+        <div class="card-title">${escHtml(loc.title)}</div>
+        ${loc.note ? `<div class="card-note">${escHtml(loc.note)}</div>` : '<div class="card-note" style="color:#475569;font-style:italic;">No notes</div>'}
+        <div class="card-meta">${listTag}${coordTag}</div>
+      `;
+
+      card.addEventListener("click", () => showLocationDetail(loc));
+      grid.appendChild(card);
+    });
+  }
+
+  function applyFilters() {
+    const q = document.getElementById("search-input").value.toLowerCase().trim();
+    const list = document.getElementById("list-filter").value;
+    const pin = document.getElementById("pin-filter").value;
+
+    let results = allLocations;
+    if (q) results = results.filter(l =>
+      l.title.toLowerCase().includes(q) || (l.note && l.note.toLowerCase().includes(q))
+    );
+    if (list) results = results.filter(l => l.list_name === list);
+    if (pin === "pinned") results = results.filter(l => l.lat != null);
+    if (pin === "unpinned") results = results.filter(l => l.lat == null);
+
+    renderCards(results);
+  }
+
+  document.getElementById("search-input").addEventListener("input", applyFilters);
+  document.getElementById("list-filter").addEventListener("change", applyFilters);
+  document.getElementById("pin-filter").addEventListener("change", applyFilters);
+
+  // ---- Modal ----
+
+  window.showLocationDetail = function (loc) {
+    document.getElementById("modal-title").textContent = loc.title;
+
+    const listTag = document.getElementById("modal-list-tag");
+    listTag.innerHTML = loc.list_name
+      ? `<span class="tag is-teal">${escHtml(loc.list_name)}</span>`
+      : "";
+
+    const noteEl = document.getElementById("modal-note");
+    const noNoteEl = document.getElementById("modal-no-note");
+    if (loc.note && loc.note.trim()) {
+      noteEl.textContent = loc.note;
+      noteEl.style.display = "block";
+      noNoteEl.style.display = "none";
+    } else {
+      noteEl.style.display = "none";
+      noNoteEl.style.display = "block";
+    }
+
+    const coordsEl = document.getElementById("modal-coords");
+    if (loc.lat != null && loc.lng != null) {
+      coordsEl.textContent = `Coordinates: ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`;
+      coordsEl.style.display = "block";
+    } else {
+      coordsEl.style.display = "none";
+    }
+
+    const linkWrap = document.getElementById("modal-link-wrap");
+    if (loc.url) {
+      document.getElementById("modal-link").href = loc.url;
+      linkWrap.style.display = "block";
+    } else {
+      linkWrap.style.display = "none";
+    }
+
+    document.getElementById("location-modal").classList.add("is-active");
+  };
+
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  document.querySelector(".modal-background").addEventListener("click", closeModal);
+
+  function closeModal() {
+    document.getElementById("location-modal").classList.remove("is-active");
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
+
+  // ---- Upload ----
+
+  const uploadBox = document.getElementById("upload-box");
+  const fileInput = document.getElementById("file-input");
+  const progressEl = document.getElementById("upload-progress");
+
+  uploadBox.addEventListener("click", () => fileInput.click());
+
+  uploadBox.addEventListener("dragover", e => {
+    e.preventDefault();
+    uploadBox.classList.add("is-dragover");
+  });
+  uploadBox.addEventListener("dragleave", () => uploadBox.classList.remove("is-dragover"));
+  uploadBox.addEventListener("drop", e => {
+    e.preventDefault();
+    uploadBox.classList.remove("is-dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+  });
+
+  function uploadFile(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["csv", "json"].includes(ext)) {
+      showToast("Please upload a .csv or .json file.", "is-warning");
+      return;
+    }
+
+    progressEl.style.display = "block";
+    uploadBox.style.opacity = "0.5";
+    uploadBox.style.pointerEvents = "none";
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    fetch("/api/upload", { method: "POST", body: fd })
+      .then(r => r.json())
+      .then(data => {
+        progressEl.style.display = "none";
+        uploadBox.style.opacity = "";
+        uploadBox.style.pointerEvents = "";
+        fileInput.value = "";
+
+        if (data.error) {
+          showToast("Error: " + data.error, "is-danger");
+        } else {
+          showToast(
+            `✅ Added ${data.added} new location${data.added !== 1 ? "s" : ""} (${data.total_parsed} parsed).`,
+            "is-success"
+          );
+          loadLocations();
+        }
+      })
+      .catch(() => {
+        progressEl.style.display = "none";
+        uploadBox.style.opacity = "";
+        uploadBox.style.pointerEvents = "";
+        showToast("Upload failed. Please try again.", "is-danger");
+      });
+  }
+
+  // ---- Clear ----
+
+  document.getElementById("clear-btn").addEventListener("click", () => {
+    if (!confirm("Delete ALL saved locations? This cannot be undone.")) return;
+    fetch("/api/locations/clear", { method: "DELETE" })
+      .then(r => r.json())
+      .then(data => {
+        showToast(`Removed ${data.deleted} location${data.deleted !== 1 ? "s" : ""}.`, "is-info");
+        loadLocations();
+      });
+  });
+
+  // ---- Toast ----
+
+  let toastTimer;
+  function showToast(message, type = "is-info") {
+    const el = document.getElementById("toast");
+    el.className = "notification " + type;
+    el.textContent = message;
+    el.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = "none"; }, 4000);
+  }
+
+  // ---- Helpers ----
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ---- Init ----
+  loadLocations();
+})();
+</script>
+</body>
+</html>
