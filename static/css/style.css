@@ -20,6 +20,30 @@ html, body {
   padding: 0;
 }
 
+body.map-view {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+body.map-view .navbar      { flex-shrink: 0; }
+body.map-view #globe-section { flex: 1; min-height: 0; }
+body.map-view #globe-container { height: 100%; min-height: unset; }
+
+body.map-view #globe-peek,
+body.map-view #food-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
 /* ===== Navbar ===== */
 .navbar {
   background: rgba(10, 22, 40, 0.95) !important;
@@ -28,28 +52,83 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 100;
+  padding: 0.5rem 0;
+  min-height: unset !important;
 }
 
-.navbar-brand .navbar-item {
-  font-size: 1.25rem;
+.navbar-inner {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.navbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.site-brand {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--teal) !important;
+  color: var(--teal);
+  text-decoration: none;
   letter-spacing: -0.02em;
+  line-height: 1;
 }
 
-.navbar-item {
-  color: #94a3b8 !important;
+/* ===== Pill Sliders (shared by both toggles) ===== */
+.pill-slider {
+  position: relative;
+  display: inline-flex;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
 }
 
-.navbar-item:hover {
-  color: var(--teal) !important;
-  background: transparent !important;
+.pill-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  height: calc(100% - 6px);
+  background: var(--teal);
+  border-radius: 999px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.pill-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.28rem 0.9rem;
+  transition: color 0.2s;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.pill-btn.active {
+  color: #fff;
 }
 
 /* ===== Globe Section ===== */
 #globe-section {
   position: relative;
-  background: linear-gradient(180deg, #0a1628 0%, #0d1f3c 100%);
+  background: #000;
   padding: 0;
 }
 
@@ -65,15 +144,17 @@ html, body {
   cursor: grabbing;
 }
 
-#globe-container canvas,
-#globe-container svg {
-  display: block;
+#globe-stars,
+#globe-map {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
 }
+#globe-stars { z-index: 0; pointer-events: none; }
+#globe-map   { z-index: 1; background: transparent; }
+.maplibregl-canvas { background: transparent !important; }
+#globe-container .globe-overlay,
+#globe-container .globe-hint { z-index: 2; }
 
 #globe-tooltip {
   position: absolute;
@@ -129,6 +210,182 @@ html, body {
   padding: 6px 12px;
   font-size: 0.75rem;
   color: var(--text-muted);
+  pointer-events: none;
+}
+
+
+/* ===== Food Panel ===== */
+#food-panel {
+  background: var(--navy-mid);
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 0;
+  min-height: 80px;
+}
+
+.food-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.food-country-header {
+  margin-bottom: 1rem;
+}
+
+.food-country-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.food-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.food-item-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.food-item-type {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--teal);
+  margin-bottom: 0.25rem;
+}
+
+.food-item-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+
+.food-item-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.food-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* ===== Food List Section ===== */
+#food-list-section {
+  padding: 2.5rem 0;
+}
+
+.food-list-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.food-list-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.food-list-country {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--teal);
+  margin: 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ===== Globe Peek Card ===== */
+#globe-peek {
+  display: none;
+  background: var(--navy-mid);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0;
+}
+
+.peek-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--orange);
+  border-radius: 12px;
+}
+
+.peek-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.peek-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
+}
+
+.peek-card-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.peek-card-link {
+  font-size: 0.8rem;
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.peek-card-link:hover {
+  text-decoration: underline;
+}
+
+.peek-card-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.peek-card-close:hover {
+  color: #fff;
+}
+
+.peek-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid transparent;
 }
 
 /* ===== Stats Bar ===== */

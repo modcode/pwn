@@ -8,21 +8,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.css" />
 </head>
 <body>
 
 <!-- ===== Navbar ===== -->
 <nav class="navbar" role="navigation" aria-label="main navigation">
-  <div class="container">
-    <div class="navbar-brand">
-      <a class="navbar-item" href="#">
-        🌍 Worthwhile World
-      </a>
+  <div class="container navbar-inner">
+    <div class="navbar-left">
+      <a class="site-brand" href="#">🌍 Worthwhile World</a>
+      <div class="pill-slider" id="mode-slider">
+        <div class="pill-thumb" id="mode-thumb" style="transform:translateX(100%)"></div>
+        <button class="pill-btn" id="btn-food">🍽️ Food &amp; Drink</button>
+        <button class="pill-btn active" id="btn-locations">📍 Locations</button>
+      </div>
     </div>
-    <div class="navbar-menu">
-      <div class="navbar-end">
-        <a class="navbar-item" href="#upload-section">Upload</a>
-        <a class="navbar-item" href="#locations-section">My Places</a>
+    <div class="navbar-right">
+      <div class="pill-slider" id="view-slider">
+        <div class="pill-thumb" id="view-thumb"></div>
+        <button class="pill-btn active" id="btn-map">🗺 Map</button>
+        <button class="pill-btn" id="btn-list">☰ List</button>
       </div>
     </div>
   </div>
@@ -31,14 +36,46 @@
 <!-- ===== Globe Section ===== -->
 <section id="globe-section">
   <div id="globe-container">
-    <div id="globe-tooltip"></div>
+    <canvas id="globe-stars"></canvas>
+    <div id="globe-map"></div>
     <div class="globe-overlay">
       <div class="globe-title">Your World,<br>Your Stories.</div>
-      <div class="globe-subtitle">Drag to rotate &middot; Scroll to zoom &middot; Click a pin to read tips</div>
+      <div class="globe-subtitle" id="globe-subtitle">Drag to rotate &middot; Scroll to zoom &middot; Click a pin to read tips</div>
     </div>
     <div class="globe-hint">🖱 Drag &amp; Scroll</div>
   </div>
 </section>
+
+<!-- ===== Globe Peek Card ===== -->
+<div id="globe-peek">
+  <div class="container">
+    <div class="peek-card">
+      <div class="peek-card-body">
+        <div id="peek-category" style="margin-bottom:0.3rem;display:none">
+          <span id="peek-category-tag" class="peek-tag"></span>
+        </div>
+        <div class="peek-card-title" id="peek-title"></div>
+        <div class="peek-card-note" id="peek-note"></div>
+        <a class="peek-card-link" id="peek-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none">Open in Google Maps ↗</a>
+      </div>
+      <button class="peek-card-close" id="peek-close" aria-label="Close">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Food Panel ===== -->
+<div id="food-panel" style="display:none">
+  <div class="container">
+    <div id="food-hint" class="food-hint">🌍 Hover over a country to explore local food &amp; drink tips</div>
+    <div id="food-country-content" style="display:none">
+      <div class="food-country-header">
+        <h3 id="food-country-name" class="food-country-name"></h3>
+      </div>
+      <div id="food-items-grid" class="food-items-grid"></div>
+      <div id="food-empty" class="food-empty" style="display:none">No tips yet for this country.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Stats Bar ===== -->
 <div class="stats-bar" id="stats-bar">
@@ -72,68 +109,11 @@
   </div>
 </div>
 
-<!-- ===== Upload Section ===== -->
-<section id="upload-section">
-  <div class="container">
-    <div class="columns is-centered">
-      <div class="column is-8-desktop is-10-tablet">
-        <h2 class="section-title">Import from Google Maps</h2>
-        <p class="section-subtitle">
-          Export your saved lists from <strong>Google Takeout</strong> (Maps &rarr; Saved Places) as CSV or JSON, then upload here.
-        </p>
-
-        <div class="upload-box" id="upload-box">
-          <input type="file" id="file-input" accept=".csv,.json" style="display:none" />
-          <div class="icon is-large">📂</div>
-          <p><strong>Drop your Google Maps export here</strong></p>
-          <p>or <strong>click to browse</strong> &nbsp;&mdash;&nbsp; .csv or .json</p>
-          <p style="margin-top:0.75rem;">
-            <span style="font-size:0.72rem; color:#64748b;">
-              Supports: Google Takeout Saved Places (JSON), Maps List CSV exports
-            </span>
-          </p>
-        </div>
-
-        <div class="upload-progress" id="upload-progress">
-          <progress class="progress is-info is-small" max="100">Uploading…</progress>
-          <p style="text-align:center; color:var(--text-muted); font-size:0.82rem; margin-top:0.4rem;">Parsing your locations…</p>
-        </div>
-
-        <div style="margin-top:1rem; display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap;">
-          <button class="button is-small is-danger is-outlined" id="clear-btn" style="display:none">
-            🗑 Clear All Locations
-          </button>
-        </div>
-
-        <!-- Format help accordion -->
-        <details style="margin-top:1.5rem;">
-          <summary style="cursor:pointer; color:var(--teal); font-size:0.85rem; user-select:none;">
-            How to export from Google Maps / Google Takeout ▸
-          </summary>
-          <div style="margin-top:0.75rem; background:rgba(14,165,233,0.04); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; font-size:0.84rem; color:#94a3b8; line-height:1.8;">
-            <ol style="margin-left:1.2rem;">
-              <li>Go to <strong>takeout.google.com</strong> and sign in.</li>
-              <li>Click <em>Deselect all</em>, then scroll to <strong>Maps (your places)</strong> and check it.</li>
-              <li>Choose <strong>Export once</strong> &rarr; any file format &rarr; <strong>Create export</strong>.</li>
-              <li>Download the archive and find <code>Saved Places.json</code> inside the <code>Maps</code> folder.</li>
-              <li>Upload that file here — your notes and locations will appear on the globe.</li>
-            </ol>
-            <p style="margin-top:0.5rem;">
-              <strong>CSV tip:</strong> If you're exporting a specific list, the CSV should have at minimum
-              <code>Title</code>, <code>Note</code>, <code>URL</code>, and optionally <code>Latitude</code>/<code>Longitude</code> columns.
-            </p>
-          </div>
-        </details>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ===== Locations Section ===== -->
 <section id="locations-section">
   <div class="container">
     <h2 class="section-title">My Places</h2>
-    <p class="section-subtitle" id="locations-count-label">No locations yet — upload your Google Maps export above.</p>
+    <p class="section-subtitle" id="locations-count-label">No locations yet.</p>
 
     <!-- Filter bar -->
     <div class="filter-bar" id="filter-bar" style="display:none">
@@ -158,7 +138,20 @@
 
     <div class="empty-state" id="empty-state">
       <div class="icon">🗺️</div>
-      <p style="font-size:1rem; color:#64748b;">Your saved places will appear here after you upload your Google Maps export.</p>
+      <p style="font-size:1rem; color:#64748b;">No saved places yet.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Food List Section ===== -->
+<section id="food-list-section" style="display:none">
+  <div class="container">
+    <h2 class="section-title">Food &amp; Drink</h2>
+    <p class="section-subtitle" id="food-list-label">Browse regional tips by country.</p>
+    <div id="food-list-grid" class="food-list-grid"></div>
+    <div class="empty-state" id="food-list-empty" style="display:none">
+      <div class="icon">🍽️</div>
+      <p style="font-size:1rem; color:#64748b;">No food or drink tips added yet.</p>
     </div>
   </div>
 </section>
@@ -195,13 +188,426 @@
 </footer>
 
 <!-- Scripts -->
-<script src="{{ url_for('static', filename='js/globe.js') }}"></script>
+<script src="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
+<script>
+  // Define immediately so app code can call it before the async map init finishes
+  window._globeLocations = [];
+  window.updateGlobePins = function(locations) {
+    window._globeLocations = locations;
+  };
+</script>
+<script>
+(async () => {
+  let map = null;
+
+  // ---- Stars ----
+  const sc = document.getElementById('globe-stars');
+  const sx = sc.getContext('2d');
+
+  function buildStars() {
+    const c = sc.parentElement;
+    sc.width  = c.clientWidth;
+    sc.height = c.clientHeight;
+    sx.clearRect(0, 0, sc.width, sc.height);
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random() * sc.width;
+      const y = Math.random() * sc.height;
+      const r = Math.random() * 1.2 + 0.2;
+      sx.beginPath();
+      sx.arc(x, y, r, 0, Math.PI * 2);
+      sx.fillStyle = `rgba(255,255,255,${Math.random() * 0.7 + 0.2})`;
+      sx.fill();
+    }
+  }
+  buildStars();
+  window.addEventListener('resize', buildStars);
+
+  // ---- Sun light — positions MapLibre's built-in atmosphere glow ----
+  // MapLibre light position with anchor:'map': [radial, azimuthal, polar]
+  // polar: colatitude (90 - sunLat), confirmed correct
+  // azimuthal: CCW from +x (lng=0) in equatorial plane → azimuthal = sunLng directly
+  function updateSunLight() {
+    const { lat, lng } = getSunLatLng();
+    const polar     = 90 - lat;               // colatitude
+    const azimuthal = (lng + 360) % 360;      // subsolar longitude → azimuthal
+    map.setLight({ anchor: 'map', position: [1.15, azimuthal, polar], intensity: 0.5 });
+  }
+
+  // ---- Sun position ----
+  function getSunLatLng() {
+    const now = new Date();
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 1)) / 86400000) + 1;
+    const decl = -23.45 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10));
+    const utcH = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+    let sunLng = ((12 - utcH) * 15 + 180) % 360 - 180;
+    return { lat: decl, lng: sunLng };
+  }
+
+
+  // ---- Terminator polygon at given solar elevation ----
+  function nightPolygon(sunLat, sunLng, elevDeg) {
+    const lat0 = sunLat * Math.PI / 180;
+    const c = Math.sin(elevDeg * Math.PI / 180);
+    const terminator = [];
+    for (let i = 0; i <= 360; i++) {
+      const lng = -180 + i;
+      const dLng = (lng - sunLng) * Math.PI / 180;
+      const a = Math.sin(lat0), b = Math.cos(lat0) * Math.cos(dLng);
+      const R = Math.sqrt(a * a + b * b);
+      let lat;
+      if (R < 1e-10 || Math.abs(c / R) > 1) {
+        lat = c > 0 ? (sunLat >= 0 ? 90 : -90) : (sunLat >= 0 ? -90 : 90);
+      } else {
+        lat = Math.max(-90, Math.min(90, (Math.asin(c / R) - Math.atan2(b, a)) * 180 / Math.PI));
+      }
+      terminator.push([lng, lat]);
+    }
+    const pole = sunLat >= 0 ? -90 : 90;
+    return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...terminator, [180, pole], [-180, pole], terminator[0]]] }, properties: {} };
+  }
+
+  // ---- Map ----
+  const style = await fetch('https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json').then(r => r.json());
+  style.projection = { type: 'globe' };
+  style.sky = { 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] };
+
+  map = new maplibregl.Map({
+    container: 'globe-map',
+    style,
+    center: [0, 20],
+    zoom: 0,
+  });
+
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+  const twilightZones = [
+    { id: 'tz0', elev:   0, color: '#000d2e', opacity: 0.13 },
+    { id: 'tz1', elev:  -6, color: '#000820', opacity: 0.13 },
+    { id: 'tz2', elev: -12, color: '#000518', opacity: 0.14 },
+    { id: 'tz3', elev: -18, color: '#000210', opacity: 0.18 },
+  ];
+
+  function applyPins(locations) {
+    map.getSource('pins').setData({
+      type: 'FeatureCollection',
+      features: locations
+        .filter(l => l.lat != null && l.lng != null)
+        .map(l => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [l.lng, l.lat] },
+          properties: { id: l.id, title: l.title, note: l.note || '', category: l.category || '' },
+        })),
+    });
+  }
+
+  // Override with map-aware version now that map exists
+  window.updateGlobePins = function(locations) {
+    window._globeLocations = locations;
+    if (map.getSource('pins')) applyPins(locations);
+  };
+
+  function makePinImage(emoji, bgColor) {
+    const size = 32;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+    ctx.fillStyle = bgColor;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = `${Math.floor(size * 0.48)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, size / 2, size / 2 + 1);
+    return ctx.getImageData(0, 0, size, size);
+  }
+
+  map.on('load', () => {
+    const sun = getSunLatLng();
+    twilightZones.forEach(z => {
+      map.addSource(z.id, { type: 'geojson', data: nightPolygon(sun.lat, sun.lng, z.elev) });
+      map.addLayer({ id: z.id, type: 'fill', source: z.id,
+        paint: { 'fill-color': z.color, 'fill-opacity': z.opacity } });
+    });
+    updateSunLight();
+
+    setInterval(() => {
+      const s = getSunLatLng();
+      twilightZones.forEach(z => map.getSource(z.id).setData(nightPolygon(s.lat, s.lng, z.elev)));
+      updateSunLight();
+    }, 60000);
+
+    map.addImage('pin-dry_activity',   makePinImage('🥾', '#22c55e'));
+    map.addImage('pin-water_activity', makePinImage('🤿', '#38bdf8'));
+    map.addImage('pin-sightseeing',    makePinImage('📸', '#f472b6'));
+    map.addImage('pin-food_drink',     makePinImage('🍽️', '#f97316'));
+    map.addImage('pin-default',        makePinImage('📍', '#94a3b8'));
+
+    const catColor = ['match', ['get', 'category'],
+      'dry_activity',   '#22c55e',
+      'water_activity', '#38bdf8',
+      'sightseeing',    '#f472b6',
+      'food_drink',     '#f97316',
+      '#94a3b8'
+    ];
+    const catIcon = ['match', ['get', 'category'],
+      'dry_activity',   'pin-dry_activity',
+      'water_activity', 'pin-water_activity',
+      'sightseeing',    'pin-sightseeing',
+      'food_drink',     'pin-food_drink',
+      'pin-default'
+    ];
+
+    map.addSource('pins', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'pins-hit', type: 'circle', source: 'pins',
+      paint: { 'circle-radius': 24, 'circle-color': 'rgba(0,0,0,0)', 'circle-opacity': 0 } });
+    map.addLayer({ id: 'pins-halo', type: 'circle', source: 'pins',
+      paint: { 'circle-radius': 14, 'circle-color': catColor, 'circle-opacity': 0.2, 'circle-blur': 1 } });
+    map.addLayer({ id: 'pins-icon', type: 'symbol', source: 'pins',
+      layout: {
+        'icon-image': catIcon,
+        'icon-size': 1,
+        'icon-allow-overlap': true,
+        'text-field': ['get', 'title'],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 12,
+        'text-offset': [0, 1.6],
+        'text-anchor': 'top',
+        'text-optional': true,
+      },
+      paint: { 'text-color': catColor, 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1.5 },
+    });
+
+    // ---- Country hover layers (Food mode) ----
+    map.addSource('countries', {
+      type: 'geojson',
+      data: "{{ url_for('static', filename='countries.geo.json') }}",
+    });
+    map.addLayer({ id: 'country-fills', type: 'fill', source: 'countries',
+      layout: { visibility: 'none' },
+      paint: {
+        'fill-color': '#0ea5e9',
+        'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.28, 0],
+      },
+    }, 'pins-hit');
+    map.addLayer({ id: 'country-borders', type: 'line', source: 'countries',
+      layout: { visibility: 'none' },
+      paint: {
+        'line-color': '#0ea5e9',
+        'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 2, 0],
+      },
+    }, 'pins-hit');
+
+    let hoveredCountryId = null;
+    map.on('mousemove', 'country-fills', e => {
+      if (!e.features.length) return;
+      const fid = e.features[0].id;
+      const name = e.features[0].properties.name;
+      map.getCanvas().style.cursor = 'pointer';
+      if (fid !== hoveredCountryId) {
+        if (hoveredCountryId !== null) map.setFeatureState({ source: 'countries', id: hoveredCountryId }, { hover: false });
+        hoveredCountryId = fid;
+        map.setFeatureState({ source: 'countries', id: hoveredCountryId }, { hover: true });
+        if (window.onCountryHover) window.onCountryHover(name);
+      }
+    });
+    map.on('mouseleave', 'country-fills', () => {
+      if (hoveredCountryId !== null) map.setFeatureState({ source: 'countries', id: hoveredCountryId }, { hover: false });
+      hoveredCountryId = null;
+      map.getCanvas().style.cursor = '';
+      if (window.onCountryHover) window.onCountryHover(null);
+    });
+
+    // ---- Mode switching ----
+    window.setMapMode = function(mode) {
+      const vis = v => v ? 'visible' : 'none';
+      ['pins-halo', 'pins-icon'].forEach(id => map.setLayoutProperty(id, 'visibility', vis(mode === 'locations')));
+      ['country-fills', 'country-borders'].forEach(id => map.setLayoutProperty(id, 'visibility', vis(mode === 'food')));
+      if (hoveredCountryId !== null) {
+        map.setFeatureState({ source: 'countries', id: hoveredCountryId }, { hover: false });
+        hoveredCountryId = null;
+      }
+    };
+
+    // ---- Pin hit testing ----
+    const HIT = 20; // pixel tolerance
+    function featuresNear(point) {
+      return map.queryRenderedFeatures(
+        [[point.x - HIT, point.y - HIT], [point.x + HIT, point.y + HIT]],
+        { layers: ['pins-hit'] }
+      );
+    }
+
+    map.on('click', e => {
+      const features = featuresNear(e.point);
+      if (!features.length) return;
+      const id = features[0].properties.id;
+      const loc = window._globeLocations.find(l => l.id === id);
+      if (loc) window.showGlobePeek(loc);
+    });
+    map.on('mousemove', e => {
+      if (map.getLayoutProperty('country-fills', 'visibility') === 'visible') return;
+      const features = featuresNear(e.point);
+      map.getCanvas().style.cursor = features.length ? 'pointer' : '';
+    });
+
+    if (window._globeLocations.length) applyPins(window._globeLocations);
+  });
+})();
+</script>
 <script>
 (function () {
   "use strict";
 
   let allLocations = [];
   let filteredLocations = [];
+  let currentMode = 'locations';
+  let currentView = 'map';
+
+  // ---- Visibility ----
+
+  const SUBTITLES = {
+    locations: 'Drag to rotate · Scroll to zoom · Click a pin to read tips',
+    food: 'Drag to rotate · Scroll to zoom · Hover a country to explore',
+  };
+
+  function updateVisibility() {
+    const isFood = currentMode === 'food';
+    const isList = currentView === 'list';
+
+    document.getElementById('globe-subtitle').textContent = SUBTITLES[currentMode];
+    document.getElementById('globe-section').style.display       = !isList ? '' : 'none';
+    document.body.classList.toggle('map-view', !isList);
+    document.getElementById('globe-peek').style.display          = 'none';
+    document.getElementById('food-panel').style.display          = (isFood && !isList) ? 'block' : 'none';
+    document.getElementById('stats-bar').style.display           = (!isFood && !isList) ? '' : 'none';
+    document.getElementById('locations-section').style.display   = (!isFood && isList) ? '' : 'none';
+    document.getElementById('food-list-section').style.display   = (isFood && isList) ? '' : 'none';
+
+    if (isFood && !isList) showFoodHint();
+    if (isFood && isList) loadAllFood();
+    if (window.setMapMode) window.setMapMode(currentMode);
+  }
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('btn-locations').classList.toggle('active', mode === 'locations');
+    document.getElementById('btn-food').classList.toggle('active', mode === 'food');
+    document.getElementById('mode-thumb').style.transform = mode === 'locations' ? 'translateX(100%)' : 'translateX(0)';
+    updateVisibility();
+  }
+
+  function setView(view) {
+    currentView = view;
+    document.getElementById('btn-map').classList.toggle('active', view === 'map');
+    document.getElementById('btn-list').classList.toggle('active', view === 'list');
+    document.getElementById('view-thumb').style.transform = view === 'list' ? 'translateX(100%)' : 'translateX(0)';
+    updateVisibility();
+  }
+
+  document.getElementById('btn-locations').addEventListener('click', () => setMode('locations'));
+  document.getElementById('btn-food').addEventListener('click', () => setMode('food'));
+  document.getElementById('btn-map').addEventListener('click', () => setView('map'));
+  document.getElementById('btn-list').addEventListener('click', () => setView('list'));
+
+  // ---- Food panel ----
+
+  const CAT_FOOD = { food: '🍴 Food', drink: '🍹 Drink' };
+  let foodAbort = null;
+
+  function showFoodHint() {
+    document.getElementById('food-hint').style.display = 'block';
+    document.getElementById('food-country-content').style.display = 'none';
+  }
+
+  function renderFoodPanel(countryName, items) {
+    document.getElementById('food-hint').style.display = 'none';
+    document.getElementById('food-country-content').style.display = 'block';
+    document.getElementById('food-country-name').textContent = countryName;
+    const grid = document.getElementById('food-items-grid');
+    const empty = document.getElementById('food-empty');
+    grid.innerHTML = '';
+    if (!items.length) {
+      empty.style.display = 'block';
+      empty.textContent = `No tips yet for ${countryName}.`;
+      return;
+    }
+    empty.style.display = 'none';
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'food-item-card';
+      card.innerHTML = `
+        <div class="food-item-type">${CAT_FOOD[item.type] || item.type}</div>
+        <div class="food-item-name">${escHtml(item.name)}</div>
+        ${item.description ? `<div class="food-item-desc">${escHtml(item.description)}</div>` : ''}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function loadAllFood() {
+    fetch('/api/food')
+      .then(r => r.json())
+      .then(renderFoodList)
+      .catch(() => {});
+  }
+
+  function renderFoodList(items) {
+    const grid = document.getElementById('food-list-grid');
+    const empty = document.getElementById('food-list-empty');
+    const label = document.getElementById('food-list-label');
+    grid.innerHTML = '';
+
+    if (!items.length) {
+      empty.style.display = 'block';
+      label.textContent = 'No tips added yet.';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const byCountry = {};
+    items.forEach(item => {
+      if (!byCountry[item.country]) byCountry[item.country] = [];
+      byCountry[item.country].push(item);
+    });
+
+    const countries = Object.keys(byCountry).sort();
+    label.textContent = `${items.length} tip${items.length !== 1 ? 's' : ''} across ${countries.length} countr${countries.length !== 1 ? 'ies' : 'y'}.`;
+
+    countries.forEach(country => {
+      const group = document.createElement('div');
+      group.className = 'food-list-group';
+      group.innerHTML = `<h3 class="food-list-country">${escHtml(country)}</h3>`;
+      const cards = document.createElement('div');
+      cards.className = 'food-items-grid';
+      byCountry[country].forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'food-item-card';
+        card.innerHTML = `
+          <div class="food-item-type">${CAT_FOOD[item.type] || item.type}</div>
+          <div class="food-item-name">${escHtml(item.name)}</div>
+          ${item.description ? `<div class="food-item-desc">${escHtml(item.description)}</div>` : ''}
+        `;
+        cards.appendChild(card);
+      });
+      group.appendChild(cards);
+      grid.appendChild(group);
+    });
+  }
+
+  window.onCountryHover = function(countryName) {
+    if (!countryName) { showFoodHint(); return; }
+    if (foodAbort) foodAbort.abort();
+    foodAbort = new AbortController();
+    fetch(`/api/food?country=${encodeURIComponent(countryName)}`, { signal: foodAbort.signal })
+      .then(r => r.json())
+      .then(items => renderFoodPanel(countryName, items))
+      .catch(() => {});
+  };
 
   // ---- Data loading ----
 
@@ -214,7 +620,6 @@
         renderCards(allLocations);
         if (window.updateGlobePins) window.updateGlobePins(allLocations);
         populateListFilter();
-        document.getElementById("clear-btn").style.display = allLocations.length ? "inline-flex" : "none";
       })
       .catch(() => showToast("Failed to load locations.", "is-danger"));
   }
@@ -258,7 +663,7 @@
     if (allLocations.length === 0) {
       filterBar.style.display = "none";
       empty.style.display = "block";
-      label.textContent = "No locations yet — upload your Google Maps export above.";
+      label.textContent = "No locations yet.";
       return;
     }
 
@@ -317,6 +722,49 @@
   document.getElementById("list-filter").addEventListener("change", applyFilters);
   document.getElementById("pin-filter").addEventListener("change", applyFilters);
 
+  // ---- Globe Peek Card ----
+
+  const peekEl   = document.getElementById("globe-peek");
+  const peekTitle = document.getElementById("peek-title");
+  const peekNote  = document.getElementById("peek-note");
+  const peekLink  = document.getElementById("peek-link");
+  const peekCatWrap = document.getElementById("peek-category");
+  const peekCatTag  = document.getElementById("peek-category-tag");
+
+  const CAT_META = {
+    dry_activity:   { label: 'Dry Activity',   color: '#22c55e' },
+    water_activity: { label: 'Water Activity', color: '#38bdf8' },
+    sightseeing:    { label: 'Sightseeing',    color: '#f472b6' },
+    food_drink:     { label: 'Food & Drink',   color: '#f97316' },
+  };
+
+  window.showGlobePeek = function(loc) {
+    const cat = CAT_META[loc.category];
+    if (cat) {
+      peekCatTag.textContent = cat.label;
+      peekCatTag.style.background = cat.color + '22';
+      peekCatTag.style.color = cat.color;
+      peekCatTag.style.borderColor = cat.color + '55';
+      peekCatWrap.style.display = "block";
+    } else {
+      peekCatWrap.style.display = "none";
+    }
+    peekTitle.textContent = loc.title;
+    peekNote.textContent  = loc.note && loc.note.trim() ? loc.note : "";
+    peekNote.style.display = loc.note && loc.note.trim() ? "block" : "none";
+    if (loc.url) {
+      peekLink.href = loc.url;
+      peekLink.style.display = "inline";
+    } else {
+      peekLink.style.display = "none";
+    }
+    peekEl.style.display = "block";
+  };
+
+  document.getElementById("peek-close").addEventListener("click", () => {
+    peekEl.style.display = "none";
+  });
+
   // ---- Modal ----
 
   window.showLocationDetail = function (loc) {
@@ -369,82 +817,6 @@
     if (e.key === "Escape") closeModal();
   });
 
-  // ---- Upload ----
-
-  const uploadBox = document.getElementById("upload-box");
-  const fileInput = document.getElementById("file-input");
-  const progressEl = document.getElementById("upload-progress");
-
-  uploadBox.addEventListener("click", () => fileInput.click());
-
-  uploadBox.addEventListener("dragover", e => {
-    e.preventDefault();
-    uploadBox.classList.add("is-dragover");
-  });
-  uploadBox.addEventListener("dragleave", () => uploadBox.classList.remove("is-dragover"));
-  uploadBox.addEventListener("drop", e => {
-    e.preventDefault();
-    uploadBox.classList.remove("is-dragover");
-    const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
-  });
-
-  fileInput.addEventListener("change", () => {
-    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
-  });
-
-  function uploadFile(file) {
-    const ext = file.name.split(".").pop().toLowerCase();
-    if (!["csv", "json"].includes(ext)) {
-      showToast("Please upload a .csv or .json file.", "is-warning");
-      return;
-    }
-
-    progressEl.style.display = "block";
-    uploadBox.style.opacity = "0.5";
-    uploadBox.style.pointerEvents = "none";
-
-    const fd = new FormData();
-    fd.append("file", file);
-
-    fetch("/api/upload", { method: "POST", body: fd })
-      .then(r => r.json())
-      .then(data => {
-        progressEl.style.display = "none";
-        uploadBox.style.opacity = "";
-        uploadBox.style.pointerEvents = "";
-        fileInput.value = "";
-
-        if (data.error) {
-          showToast("Error: " + data.error, "is-danger");
-        } else {
-          showToast(
-            `✅ Added ${data.added} new location${data.added !== 1 ? "s" : ""} (${data.total_parsed} parsed).`,
-            "is-success"
-          );
-          loadLocations();
-        }
-      })
-      .catch(() => {
-        progressEl.style.display = "none";
-        uploadBox.style.opacity = "";
-        uploadBox.style.pointerEvents = "";
-        showToast("Upload failed. Please try again.", "is-danger");
-      });
-  }
-
-  // ---- Clear ----
-
-  document.getElementById("clear-btn").addEventListener("click", () => {
-    if (!confirm("Delete ALL saved locations? This cannot be undone.")) return;
-    fetch("/api/locations/clear", { method: "DELETE" })
-      .then(r => r.json())
-      .then(data => {
-        showToast(`Removed ${data.deleted} location${data.deleted !== 1 ? "s" : ""}.`, "is-info");
-        loadLocations();
-      });
-  });
-
   // ---- Toast ----
 
   let toastTimer;
@@ -468,6 +840,7 @@
   }
 
   // ---- Init ----
+  updateVisibility();
   loadLocations();
 })();
 </script>

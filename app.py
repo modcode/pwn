@@ -18,6 +18,9 @@ db = SQLAlchemy(app)
 ALLOWED_EXTENSIONS = {"csv", "json"}
 
 
+CATEGORIES = {"dry_activity", "water_activity", "sightseeing", "food_drink"}
+
+
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -26,6 +29,7 @@ class Location(db.Model):
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
     list_name = db.Column(db.String(255), default="")
+    category = db.Column(db.String(50), default="")
 
     def to_dict(self):
         return {
@@ -36,6 +40,24 @@ class Location(db.Model):
             "lat": self.lat,
             "lng": self.lng,
             "list_name": self.list_name,
+            "category": self.category,
+        }
+
+
+class FoodItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    country = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, default="")
+    item_type = db.Column(db.String(10), default="food")  # "food" or "drink"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "country": self.country,
+            "name": self.name,
+            "description": self.description,
+            "type": self.item_type,
         }
 
 
@@ -133,6 +155,8 @@ def index():
     return render_template("index.html")
 
 
+
+
 @app.route("/api/locations")
 def get_locations():
     locations = Location.query.all()
@@ -162,18 +186,51 @@ def upload_file():
     except Exception as e:
         return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
 
+    category = request.form.get("category", "")
+    if category not in CATEGORIES:
+        category = ""
+
     added = 0
     for loc_data in parsed:
-        # Skip duplicates by title + list_name
         existing = Location.query.filter_by(
             title=loc_data["title"], list_name=loc_data["list_name"]
         ).first()
         if not existing:
-            db.session.add(Location(**loc_data))
+            db.session.add(Location(**loc_data, category=category))
             added += 1
 
     db.session.commit()
     return jsonify({"added": added, "total_parsed": len(parsed)})
+
+
+@app.route("/api/food")
+def get_food():
+    country = request.args.get("country", "").strip()
+    q = FoodItem.query
+    if country:
+        q = q.filter(db.func.lower(FoodItem.country) == country.lower())
+    return jsonify([i.to_dict() for i in q.order_by(FoodItem.item_type, FoodItem.name).all()])
+
+
+@app.route("/api/food", methods=["POST"])
+def add_food():
+    data = request.get_json(force=True)
+    items = data if isinstance(data, list) else [data]
+    added = 0
+    for item in items:
+        name = (item.get("name") or "").strip()
+        country = (item.get("country") or "").strip()
+        if not name or not country:
+            continue
+        db.session.add(FoodItem(
+            country=country,
+            name=name,
+            description=item.get("description", ""),
+            item_type=item.get("type", "food"),
+        ))
+        added += 1
+    db.session.commit()
+    return jsonify({"added": added})
 
 
 @app.route("/api/locations/<int:loc_id>", methods=["DELETE"])
@@ -194,6 +251,12 @@ def clear_locations():
 
 with app.app_context():
     db.create_all()
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(db.text("ALTER TABLE location ADD COLUMN category VARCHAR(50) DEFAULT ''"))
+            conn.commit()
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     app.run(debug=True)
